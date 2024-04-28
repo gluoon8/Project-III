@@ -2,3 +2,17 @@
 *.o
 *.out
 *.x
+serial/energy_verlet.dat
+serial/pos_ini.dat
+serial/pos_out.dat
+serial/pressure_verlet.dat
+serial/Temperatures_verlet.dat
+serial/traj.xyz
+serial/vel_fin_verlet.dat
+serial/vel_ini.dat
+serial/src/plots/Energies.png
+serial/src/plots/Histogram.png
+serial/src/plots/Momentum.png
+serial/src/plots/Pressure.png
+serial/src/plots/Radial_Distribution_function.png
+serial/src/plots/Temperature.png
