@@ -59,7 +59,11 @@ Program main
 
    open (22, file="vel_ini.dat")
    open (33, file="pos_ini.dat")
-   open (55, file="traj.xyz")
+   open (55, file="pos_out.dat")
+   open (27, file="traj.xyz")
+
+   write (27, *) N
+   write (27, *) ""
 
    call initialize_positions(N, rho, r_ini)
 
@@ -135,7 +139,14 @@ Program main
          count = count + 1
       end if
 
-
+      if (mod(step, 1000) .eq. 0 .and. real(step)/Nsteps .gt. 0.6) then
+         !write (27, *) N
+         !write (27, *) ""
+         do i = 1, N
+         write (27, *) "A", r(i, 1), r(i, 2), r(i, 3)
+         end do
+         !write (27, *) " "
+      end if
 
    end do
 
@@ -154,6 +165,7 @@ Program main
    close (55)
    close (44)
    close (23)
+   close (27)
    close (77)
    close (96)
 End Program
