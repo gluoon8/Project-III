@@ -59,7 +59,7 @@ Program main
 
    open (22, file="vel_ini.dat")
    open (33, file="pos_ini.dat")
-   open (55, file="pos_out.dat")
+   open (55, file="traj.xyz")
 
    call initialize_positions(N, rho, r_ini)
 
@@ -127,16 +127,15 @@ Program main
          print *, int(real(step)/Nsteps*100), "%"
       end if
 
-      ! We save the last 10% positions and velocity components of the simulation
-      if (real(step)/Nsteps .gt. 0.7 .and. mod(step,1000) .eq. 0) then
-         v_fin = v_fin + vel
-         r_out = r_out
+
+      if (mod(step, 1000) .eq. 0 .and. real(step)/Nsteps .gt. 0.6) then
          do i = 1, N
-            write (55, *) "A", r(i, 1), r(i, 2), r(i, 3)
+         write (55, *) "A", r(i, 1), r(i, 2), r(i, 3)
          end do
-        
          count = count + 1
       end if
+
+
 
    end do
 

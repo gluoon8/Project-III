@@ -56,7 +56,7 @@ plot:
 ##                                                                   #
 all: MD.exe
 MD.exe:  pbc.o forces.o integrators.o  initialize.o  main.o
-	$(FC) $(F_FLAGS) $(COMP_D_FLAGS) $(COMP_R_FLAGS) $^ -o $@
+	$(FC) $(F_FLAGS) $(COMP_D_FLAGS) $(COMP_R_FLAGS) $^ -O2 -o $@
 
 
 # ~ CLEANING ~

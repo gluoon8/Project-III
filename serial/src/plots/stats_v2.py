@@ -48,6 +48,7 @@ def rdf(pos, L, N, dr):
         hist[i] /= 4 * np.pi * r**2 * dr * rho * N      # Normalize the histogram
     return hist
 
+#@njit
 def block_average(data, max_size=16):
     #--------------------BLOCK AVERAGING--------------------|
 
@@ -68,36 +69,80 @@ def block_average(data, max_size=16):
     power = np.arange(int(np.log(max_size)/np.log(2)))               
     m_sizes = 2**power                                                # Array amb les mides dels blocs, de 1 a max_size
 
-    print('bin sizes',m_sizes)
-
+    #print('bin sizes',m_sizes)
 
     block_mean = np.zeros((len(m_sizes), int(data.shape[1])))         # Array per guardar mitjanes de cada bloc
     block_stdev = np.zeros((len(m_sizes), int(data.shape[1])))        # Array per guardar desviacions estandard de cada bloc
 
-    for size in m_sizes:
-        print('Size: ',size)
+    for i in range(len(m_sizes)):
+        size = m_sizes[i]
+        #print('Size: ',size)
         Nblocks = int(len(data)/size)
-        bins = np.array_split(data, Nblocks)                      # Dividim en 10 bins
-        bin_mean = np.empty((len(bins), bins[0].shape[1]))       # Creem array per guardar mitjanes de CADA bin
+        bins = np.array_split(data, Nblocks)                    # Dividim en 10 bins
+        
+        bin_mean = np.empty((len(bins), bins[0].shape[1]))      # Creem array per guardar mitjanes de CADA bin
+        means = np.empty((len(bins), bins[0].shape[1]))         # Creem array per guardar mitjanes de CADA bin
+        stdev2 = np.empty((len(bins), bins[0].shape[1]))        # Creem array per guardar desviacions estandard de CADA bin
 
-        for i in range(len(bins)):
-            bin_mean[i] = np.mean(bins[i], axis=0)
+        print('bins shape',bins[0].shape)
 
-        means = np.mean(bin_mean, axis=0)  
-        stdev2 = np.var(bin_mean, axis=0)/(Nblocks-1)
+        print('means shape',means.shape)
 
-        #print(block_mean.shape)
-        #print(means.shape)
-        #print(stdev2.shape)
+        print('N blocks: ',Nblocks)
 
-        index = int(np.where(m_sizes == size)[0][0])   # Index de la mida de bin corresponent
-        print(np.where(m_sizes == size))
-        print('Index: ',index)
-        block_mean[index] = means                 # Guardem mitjanes de cada bloc amb la mida de bin corresponent
-        block_stdev[index] = stdev2                  # Guardem desviacions estandard de cada bloc amb la mida de bin corresponent
+        for j in range(len(bins)):
+            bin_mean[j] = np.sum(bins[j], axis=0) / size
+
+        
+        means = np.sum(bin_mean, axis=0) / Nblocks                          # Mitjana de totes les mitjanes de cada bloc
+        
+        squared_diff = [(bin_mean[i] - means) ** 2 for i in range(len(bin_mean))]
+        # Calculate the variance of the list by summing the squared differences and dividing by the length of the list
+        variance = sum(squared_diff) / (Nblocks-1)
+        
+        print('variance shape',variance.shape)
+        print('variance',variance)
+
+        
+
+        #stdev2 = np.var(bin_mean, axis=0,ddof=1) #/ (Nblocks-1)                    # Desviació estandard de cada bloc
+        '''        
+        print('bin_mean shape',bin_mean.shape)
+        print('bin_mean',bin_mean[0])
+        print('means shape',means.shape)
+        print('means',means)
+
+        sum = np.zeros((len(bin_mean), bins[0].shape[1]))
 
 
-    return block_mean, block_stdev, m_sizes
+        print('sum shape',sum.shape)
+
+        
+
+
+        for k in range(len(bin_mean)):
+            sum[k] = (abs(bin_mean[k] - means))**2
+
+        sum = np.sum(sum, axis=0)
+        sum = sum / (Nblocks-1)
+
+        print('sum',sum)
+
+        exit()
+
+        sum = sum()
+        
+        #stdev2 = np.sum((bin_mean - means)**2, axis=0) / (Nblocks-1)       # Desviació estandard de cada bloc
+        '''
+        #stdev2 = sum()      # Calculate the sample variance of each block mean
+
+        index = int(np.where(m_sizes == size)[0][0])    # Index de la mida de bin corresponent
+        #print(np.where(m_sizes == size))
+        block_mean[index] = means                       # Guardem mitjanes de cada bloc amb la mida de bin corresponent
+        block_stdev[index] = variance                     # Guardem desviacions estandard de cada bloc amb la mida de bin corresponent
+        
+
+    return block_mean, variance, m_sizes
 
 
 def autocorr(x,a,b,tau):
@@ -139,25 +184,20 @@ energy = np.loadtxt('../../energy_verlet.dat', skiprows=4, usecols= (1,2,3,4), d
 temperature = np.loadtxt('../../Temperatures_verlet.dat', skiprows=1, dtype=float)
 pressure = np.loadtxt('../../pressure_verlet.dat', skiprows=1, dtype=float)
 momentum = energy[:, 3]
-print('e_shape ',energy.shape)
+#print('e_shape ',energy.shape)
 energy = energy[:,:3]
 pos_fin = np.loadtxt('../../traj.xyz', skiprows=2, usecols = (1,2,3), dtype=float) 
 N = 125
-print(pos_fin.shape)
-
-
 
 n_frames = int(len(pos_fin)/N)          # Number of frames
 traj = np.array_split(pos_fin, n_frames)      # Split the array into frames
 
 
+#------------------------------Convert units--------------------------------|
+
 energy = energy*eps/1000                # Convert energy to kJ/mol
 temperature = temperature*eps           # Convert Temperature to K
 pressure = pressure*eps/(((sigma*1e-10)**3*6.022e23))/1e6   # Convert pressure to Pa
-
-print(energy.shape)
-print(energy[0])
-
 
 
 '''# convert time to ps
@@ -167,17 +207,11 @@ print(energy[0])
 #pressure[:, 0] = pressure[:, 0]*6.022e23*np.sqrt(mass/1000*sigma**2*1e-20/eps)
 '''
 
-
-#-------------------------------------------------------------------------|
-
 #----------------------------------RDF plot-------------------------------|
-#
-#       PLOT RDF 
-#
 L = 8.55
 N = 125
 dr = 0.04
-rdf_hist = np.zeros(int(L/(2*dr)))
+rdf_hist = np.zeros(int(L/(2*dr)))                  
 count=0
 for i in range(N,int(len(pos_fin)),N):
     rdf_hist_sum = rdf(pos_fin[i-N:i], L, N, dr)
@@ -199,23 +233,23 @@ plt.ylabel('g(r)')
 plt.legend()
 plt.title('Radial Distribution Function')
 plt.savefig('Radial_Distribution_function.png')
-# Draw a line on y = 1
-plt.axhline(y=1, color='black', linestyle='--')
-plt.show()
+#plt.show()
 
 
 #---------------------------Block averaging-------------------------------|
 print('Energy block averaging...')
 emeans, estdevs, m_sizes = block_average(energy, 16)
-print('Potential Energy: ', emeans[-1,0], '±', estdevs[-1,0], 'kJ/mol')
-print('Kinetic Energy: ', emeans[-1,1], '±', estdevs[-1,1], 'kJ/mol')
-print('Total Energy: ', emeans[-1,2], '±', estdevs[-1,2], 'kJ/mol')
+print('Potential Energy: ', emeans[-1,0], '±', np.sqrt(estdevs[-1,0]), 'kJ/mol')
+print('Kinetic Energy: ', emeans[-1,1], '±', np.sqrt(estdevs[-1,1]), 'kJ/mol')
+print('Total Energy: ', emeans[-1,2], '±', np.sqrt(estdevs[-1,2]), 'kJ/mol')
+
 
 
 print('temp shape',temperature.shape)
 print('Temperature block averaging...')
 tempmeans, tempstdevs, m_sizes = block_average(temperature, 16)
-print('Temperature: ', tempmeans[-1,1], '±', tempstdevs[-1,1], 'K')
+print(tempstdevs)
+print('Temperature: ', tempmeans[-1,1], '±', np.sqrt(tempstdevs[-1,1]), 'K')
 
 
 
@@ -224,36 +258,10 @@ presmeans, presstdevs, m_sizes = block_average(pressure, 16)
 print('pres shape', presmeans.shape)
 print('Pressure: ', presmeans[-1,1], '±', np.sqrt(presstdevs[-1,1]), 'MPa')
 
-print(emeans)
-print(estdevs)
-
-print(emeans.shape)
-print(estdevs.shape)
-
-
-
-
-#blockav_plot(np.arange(len(m_sizes)), emeans[:, 2], estdevs[:, 2])
-
-
-# Display the block averages and standard deviations
-'''print('Block averages:')
-
-emeans, stdevs = block_average(energy, 16)
-print('Potential Energy: ', emeans[0], '±', stdevs[0], 'kJ/mol')
-print('Kinetic Energy: ', emeans[1], '±', stdevs[1], 'kJ/mol')
-print('Total Energy: ', emeans[2], '±', stdevs[2], 'kJ/mol')
-
-
-print('Temperature: ', temp[1], '±', stdev_temp[1], 'K')
-
-
-print('Pressure: ', pres[1], '±', stdev_pres[1], 'MPa')
-'''
 
 #---------------------------Autocorrelation function-------------------------------|
 
-params, cov = fitting(autocorr, m_sizes, estdevs[:, 2])
+params, cov = fitting(autocorr, m_sizes, estdevs[:, 1])
 
 print('Fitted parameters: ', params)
 print('Covariance matrix: ', cov)
@@ -263,14 +271,11 @@ x = np.arange(m_sizes[0], m_sizes[-1])
 
 plt.figure()
 plt.plot(x, autocorr(x, *params), label='Fitted autocorrelation', color='mediumseagreen')
-plt.scatter(m_sizes, np.sqrt(estdevs[:, 2]), color='blue', label='Block averages')
+plt.scatter(m_sizes, np.sqrt(estdevs[:, 1]), color='blue', label='Block averages')
 plt.xlabel('Block size')
 plt.ylabel('stdev2')
 plt.title('Block averages')
 plt.legend()
 plt.show()
 
-
-
-print(params)
-print(cov)
+plt.show()
