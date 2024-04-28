@@ -96,6 +96,9 @@ def block_average(data, max_size=16):
         
         means = np.sum(bin_mean, axis=0) / Nblocks                          # Mitjana de totes les mitjanes de cada bloc
         
+        print(means[0])
+        exit()
+
         squared_diff = [(bin_mean[i] - means) ** 2 for i in range(len(bin_mean))]
         # Calculate the variance of the list by summing the squared differences and dividing by the length of the list
         variance = sum(squared_diff) / (Nblocks-1)
